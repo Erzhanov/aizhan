@@ -1,0 +1,6 @@
+streamlit>=1.41.0
+openai>=1.3.0  # Or latest 1.x; note: v2.0+ has breaking changes
+supabase>=2.0.3
+pandas>=2.2.3
+plotly>=5.18.0  # Or latest 6.x
+python-dotenv>=1.0.1
