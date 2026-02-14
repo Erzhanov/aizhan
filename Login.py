@@ -5,12 +5,8 @@ from config import get_supabase_client
 # -----------------------------
 # 🔐 Құпия сөзді хэштеу
 # -----------------------------
-def hash_password(password):
+def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
-
-# -----------------------------
-# 🎄 Жаңа жылдық баннер
-# -----------------------------
 
 # -----------------------------
 # 🚪 Кіру беті
@@ -28,34 +24,38 @@ def login_page():
     with tab_login:
         with st.form("login_form"):
             st.markdown("#### 🔑 Кіру мәліметтері")
-            username = st.text_input("👤 Пайдаланушы аты")
+            login_value = st.text_input("👤 Пайдаланушы аты немесе Email")  # ✅ өзгерді
             password = st.text_input("🔒 Құпия сөз", type="password")
             submit = st.form_submit_button("➡️ Кіру")
 
             if submit:
-                if username and password:
+                if login_value and password:
                     supabase = get_supabase_client()
                     hashed_pw = hash_password(password)
 
                     try:
+                        # ✅ username OR email арқылы іздеу
                         response = (
                             supabase.table("users")
                             .select("*")
-                            .eq("username", username)
+                            .or_(f"username.eq.{login_value},email.eq.{login_value}")
                             .eq("password", hashed_pw)
+                            .limit(1)
                             .execute()
                         )
 
                         if response.data:
+                            user = response.data[0]
+
                             st.session_state.logged_in = True
-                            st.session_state.username = username
-                            st.session_state.user_id = response.data[0]["id"]
-                            st.session_state.is_admin = False
+                            st.session_state.username = user["username"]      # ✅ нақты username сақтаймыз
+                            st.session_state.user_id = user["id"]
+                            st.session_state.is_admin = bool(user.get("is_admin", False))  # егер баған бар болса
 
                             st.success("🎉 Сәтті кірдіңіз! Қош келдіңіз!")
                             st.rerun()
                         else:
-                            st.error("❌ Пайдаланушы аты немесе құпия сөз қате!")
+                            st.error("❌ Логин (username/email) немесе құпия сөз қате!")
                     except Exception as e:
                         st.error(f"⚠️ Қате орын алды: {str(e)}")
                 else:
@@ -82,15 +82,17 @@ def login_page():
                         hashed_pw = hash_password(new_password)
 
                         try:
+                            # ✅ username немесе email бұрын бар ма тексеру
                             existing = (
                                 supabase.table("users")
-                                .select("*")
-                                .eq("username", new_username)
+                                .select("id")
+                                .or_(f"username.eq.{new_username},email.eq.{new_email}")
+                                .limit(1)
                                 .execute()
                             )
 
                             if existing.data:
-                                st.error("⚠️ Бұл пайдаланушы аты бұрын алынған!")
+                                st.error("⚠️ Бұл username немесе email бұрын тіркелген!")
                             else:
                                 supabase.table("users").insert({
                                     "username": new_username,
